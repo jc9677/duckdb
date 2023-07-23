@@ -19,6 +19,15 @@ def read_points_from_parquet_file(parquet_file, table_name):
     except Exception as e:
         logging.error(f"Failed to create table '{table_name}' from {parquet_file}")
         logging.error(e)
+        if 'already exists' in str(e):
+            # Ask the user if they want to overwrite the table
+            overwrite = input(f"Table '{table_name}' already exists. Overwrite? (y/n): ")
+            if overwrite.lower() == 'y':
+                ddb.sql(f"DROP TABLE {table_name}")
+                logging.info(f"Dropped table '{table_name}'")
+                read_points_from_parquet_file(parquet_file, table_name)
+            else:
+                logging.info(f"Fine, I won't overwrite '{table_name}'")
 
 def create_vector_grid(ddb_table, geometry_column, grid_size):
     import geopandas as gpd
