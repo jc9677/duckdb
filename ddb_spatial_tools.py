@@ -8,6 +8,16 @@ logger = logging.getLogger(__name__)
 ddb.load_extension('spatial')
 
 def read_points_from_parquet_file(parquet_file, table_name):
+    """
+    Reads points from a parquet file and creates a table in DuckDB with the given table name.
+
+    Args:
+    - parquet_file (str): The path to the parquet file to read from.
+    - table_name (str): The name of the table to create in DuckDB.
+
+    Returns:
+    - True if the table was successfully created, False otherwise.
+    """
     try:
         ddb.sql(f"""
         CREATE TABLE {table_name} AS
@@ -30,6 +40,17 @@ def read_points_from_parquet_file(parquet_file, table_name):
                 logging.info(f"Fine, I won't overwrite '{table_name}'")
 
 def create_vector_grid(ddb_table, geometry_column, grid_size):
+    """
+    Creates a vector grid based on the bounding box of a DuckDB table.
+
+    Args:
+    - ddb_table (str): The name of the DuckDB table to create the vector grid from.
+    - geometry_column (str): The name of the geometry column in the DuckDB table.
+    - grid_size (float): The size of the grid cells in the vector grid.
+
+    Returns:
+    - A GeoDataFrame containing the vector grid.
+    """
     import geopandas as gpd
     from shapely.geometry import Polygon
     import numpy as np
