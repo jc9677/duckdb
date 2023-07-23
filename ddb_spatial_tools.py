@@ -39,7 +39,7 @@ def read_points_from_parquet_file(parquet_file, table_name):
             else:
                 logging.info(f"Fine, I won't overwrite '{table_name}'")
 
-def create_vector_grid(ddb_table, geometry_column, grid_size):
+def create_vector_grid(ddb_table, geometry_column, grid_size, crs_code):
     """
     Creates a vector grid based on the bounding box of a DuckDB table.
 
@@ -73,6 +73,6 @@ def create_vector_grid(ddb_table, geometry_column, grid_size):
             polygons.append(Polygon([(x,y), (x+width, y), (x+width, y+height), (x, y+height)]))
 
     grid = gpd.GeoDataFrame({'geometry':polygons})
-    grid.set_crs(crs='esri:102001', inplace=True)
+    grid.set_crs(crs=f'{crs_code}', inplace=True)
 
     return grid
