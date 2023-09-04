@@ -1,5 +1,7 @@
 import duckdb as ddb
+import os
 import logging
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -85,14 +87,12 @@ def validate_geoparquet_file(file_path):
     and
     https://github.com/OSGeo/gdal/blob/master/swig/python/gdal-utils/osgeo_utils/samples/validate_geoparquet.py
     """
-
-    import os
     os.system(f"python3 validate_geoparquet.py --check-data {file_path}")
 
 def local_MarCad_csv_to_parquet(file_path):
-    import os
-    import duckdb as ddb
-    ddb.load_extension('spatial')
+    """
+    Converts a local MarCad CSV file to a local MarCad Parquet file.
+    """
 
     csv = file_path
     source = ddb.sql(f"SELECT *, ST_AsWKB(ST_POINT(LON, LAT)) AS geometry FROM read_csv_auto('{csv}', parallel=false)")
@@ -100,6 +100,7 @@ def local_MarCad_csv_to_parquet(file_path):
 
     prq = os.path.splitext(csv)[0] + '.parquet'
     ddb.sql(f"COPY source TO '{prq}' (FORMAT PARQUET)")
+    return prq
 
 def marCad_parquet_to_gpq(parquet_file, gpq_file, max_rows=None):
     """
