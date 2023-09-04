@@ -76,3 +76,15 @@ def create_vector_grid(ddb_table, geometry_column, grid_size, crs_code):
     grid.set_crs(crs=f'{crs_code}', inplace=True)
 
     return grid
+
+def validate_geoparquet_file(file_path):
+    """
+    Validates a GeoParquet file.
+    Requires the validate_geoparquet.py script to be in the same directory.
+    See https://gdal.org/drivers/vector/parquet.html#validation-script
+    and
+    https://github.com/OSGeo/gdal/blob/master/swig/python/gdal-utils/osgeo_utils/samples/validate_geoparquet.py
+    """
+
+    import os
+    os.system(f"python3 validate_geoparquet.py --check-data {file_path}")
