@@ -88,3 +88,94 @@ def validate_geoparquet_file(file_path):
 
     import os
     os.system(f"python3 validate_geoparquet.py --check-data {file_path}")
+
+def local_MarCad_csv_to_parquet(file_path):
+    import os
+    import duckdb as ddb
+    ddb.load_extension('spatial')
+
+    csv = file_path
+    source = ddb.sql(f"SELECT *, ST_AsWKB(ST_POINT(LON, LAT)) AS geometry FROM read_csv_auto('{csv}', parallel=false)")
+
+
+    prq = os.path.splitext(csv)[0] + '.parquet'
+    ddb.sql(f"COPY source TO '{prq}' (FORMAT PARQUET)")
+
+def marCad_parquet_to_gpq(parquet_file, gpq_file, max_rows=None):
+    """
+    Converts a MarCad Parquet file to a GeoParquet file.
+    ---->> THIS SEEMS TOO SLOW TO BE USEFUL
+    """
+    from osgeo import ogr
+    # Register all OGR drivers
+    #ogr.RegisterAll()
+
+    ogr.UseExceptions()
+
+
+
+    # Open source Parquet file
+    src_ds = ogr.Open(parquet_file, 0)
+    if src_ds is None:
+        print("Could not open source dataset")
+        exit(1)
+
+    # Get the source layer
+    src_layer = src_ds.GetLayer()
+
+    #for f in src_layer:
+        #print(f.GetField('geom'))#, f.GetGeometryRef().ExportToWkt())
+
+    # Create destination Parquet file
+    dest_driver = ogr.GetDriverByName("Parquet")
+    if dest_driver is None:
+        print("Parquet driver is not available")
+        exit(1)
+
+    dest_ds = dest_driver.CreateDataSource(gpq_file)
+    if dest_ds is None:
+        print("Could not create destination dataset")
+        exit(1)
+
+    # Create destination layer
+    dest_layer = dest_ds.CreateLayer("layer_name", geom_type=ogr.wkbPoint, options=['GEOMETRY_NAME=geometry', 'COMPRESSION=SNAPPY']) #geom_type=src_layer.GetGeomType())
+
+    # Get a list of the fields in the source layer and add them to the destination layer
+    src_defn = src_layer.GetLayerDefn()
+    for i in range(src_defn.GetFieldCount()):
+        if src_defn.GetFieldDefn(i).GetName() == 'geometry':
+            continue
+        field_defn = src_defn.GetFieldDefn(i)
+        print(field_defn.GetName(), ":", field_defn.GetTypeName())
+        dest_layer.CreateField(field_defn)
+
+    # Loop through features to copy them
+    src_feature = src_layer.GetNextFeature()
+    #print(src_feature)
+
+    if max_rows is None:
+        limit = src_layer.GetFeatureCount()
+    else:
+        limit = max_rows
+
+    count = 0
+    while src_feature and count < limit:
+        print(count, end='\r')
+        #print(src_feature.GetField('geometry'))
+        dest_feature = ogr.Feature(dest_layer.GetLayerDefn())
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint_2D(src_feature.GetField('LON'), src_feature.GetField('LAT')) # SHOULD BE ABLE TO USE EXISTING GEOM COLUMN??
+        #point.AddGeometry
+        #dest_feature.SetFrom(src_feature)
+        dest_feature.SetGeometry(point)
+        for i in range(src_feature.GetFieldCount()-1):
+            dest_feature.SetField(i, src_feature.GetField(i))
+
+        dest_layer.CreateFeature(dest_feature)
+        src_feature = src_layer.GetNextFeature()
+        #if max_rows is not None:
+        count += 1
+
+    # Close datasets
+    src_ds = None
+    dest_ds = None
